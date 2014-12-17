@@ -114,11 +114,15 @@ int main(int argc, char* argv[]) {
     uint32_t* M = (uint32_t*)msgPad;
     uint32_t T1, T2;
 
+    for(size_t i = 0; i < N * 16; i++) {
+        M[i] = swapE32(M[i]);
+    }
+
     // 6.2.2
     for(size_t i = 0; i < N; i++) {
         // 1
         for(size_t t = 0; t < 16; t++) {
-            W[t] = swapE32(M[i*16 + t]);
+            W[t] = M[i*16 + t];
         }
         for(size_t t = 16; t < 64; t++) {
             W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
