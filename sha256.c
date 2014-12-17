@@ -109,7 +109,7 @@ int main(int argc, char* argv[]) {
     size_t N = msgSize / 512;
 
     // 6.2
-    uint32_t a, b, c, d, e, f, g, h;
+    uint32_t v[8];
     uint32_t W[64];
     uint32_t* M = (uint32_t*)msgPad;
     uint32_t T1, T2;
@@ -117,35 +117,37 @@ int main(int argc, char* argv[]) {
     // 6.2.2
     for(size_t i = 0; i < N; i++) {
         // 1
-        for(int t = 0; t < 16; t++) {
+        for(size_t t = 0; t < 16; t++) {
             W[t] = swapE32(M[i*16 + t]);
         }
-        for(int t = 16; t < 64; t++) {
+        for(size_t t = 16; t < 64; t++) {
             W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
         }
 
         // 2
-        a = H[0];b = H[1];c = H[2];d = H[3];
-        e = H[4];f = H[5];g = H[6];h = H[7];
-
-        // 3
-        for(int t = 0; t < 64; t++) {
-            T1 = h + ep1(e) + Ch(e, f, g) + K[t] + W[t];
-            T2 = ep0(a) + Maj(a, b, c);
-            h = g;g = f;f = e;
-            e = d + T1;
-            d = c;c = b;b = a;
-            a = T1 + T2;
+        for(size_t t = 0; t < 8; t++) {
+            v[t] = H[t];
         }
 
-        H[0] = a + H[0];
-        H[1] = b + H[1];
-        H[2] = c + H[2];
-        H[3] = d + H[3];
-        H[4] = e + H[4];
-        H[5] = f + H[5];
-        H[6] = g + H[6];
-        H[7] = h + H[7];
+        // 3
+        for(size_t t = 0; t < 64; t++) {
+            // a=0 b=1 c=2 d=3 e=4 f=5 g=6 h=7
+            T1 = v[7] + ep1(v[4]) + Ch(v[4], v[5], v[6]) + K[t] + W[t];
+            T2 = ep0(v[0]) + Maj(v[0], v[1], v[2]);
+
+            v[7] = v[6];
+            v[6] = v[5];
+            v[5] = v[4];
+            v[4] = v[3] + T1;
+            v[3] = v[2];
+            v[2] = v[1];
+            v[1] = v[0];
+            v[0] = T1 + T2;
+        }
+
+        for(size_t t = 0; t < 8; t++) {
+            H[t] += v[t];
+        }
     }
 
     for(size_t i = 0; i < 8; i++) {
