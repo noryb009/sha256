@@ -56,7 +56,7 @@ int sha256(char* msg, cl_context context, cl_command_queue q, cl_kernel kernel) 
     memcpy(msgPad+(msgSize/8)-8, &l, 8);
 
     // 5.2.1
-    size_t N = msgSize / 512;
+    uint32_t N = msgSize / 512;
 
     // 6.2
     uint32_t* M = (uint32_t*)msgPad;
@@ -66,13 +66,16 @@ int sha256(char* msg, cl_context context, cl_command_queue q, cl_kernel kernel) 
     }
 
     cl_int ret;
-    cl_mem in = clCreateBuffer(context, CL_MEM_READ_ONLY, 64 * N * sizeof(uint32_t), NULL, &ret);
+    cl_mem msgMem = clCreateBuffer(context, CL_MEM_READ_ONLY, 64 * N * sizeof(uint32_t), NULL, &ret);
+    cl_mem nMem = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint32_t), NULL, &ret);
     cl_mem out = clCreateBuffer(context, CL_MEM_WRITE_ONLY, 8 * sizeof(uint32_t), NULL, &ret);
 
-    clEnqueueWriteBuffer(q, in, CL_TRUE, 0, 64 * N * sizeof(uint32_t), M, 0, NULL, NULL);
+    clEnqueueWriteBuffer(q, msgMem, CL_TRUE, 0, 64 * N * sizeof(uint32_t), M, 0, NULL, NULL);
+    clEnqueueWriteBuffer(q, nMem, CL_TRUE, 0, sizeof(uint32_t), &N, 0, NULL, NULL);
 
-    clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&in);
-    clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&out);
+    clSetKernelArg(kernel, 0, sizeof(cl_mem), (void*)&msgMem);
+    clSetKernelArg(kernel, 1, sizeof(cl_mem), (void*)&nMem);
+    clSetKernelArg(kernel, 2, sizeof(cl_mem), (void*)&out);
 
     size_t totalSize = 1;
     size_t groupSize = 1;

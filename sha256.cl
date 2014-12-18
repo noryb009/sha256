@@ -39,46 +39,55 @@ __constant uint K[] = {
 };
 
 // 5.3.2
-__constant uint H[] = {
+__constant uint origH[] = {
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
 };
 
-__kernel void sha256(__global const uint *M, __global uint *ret) {
-    int i = get_global_id(0);
-
+__kernel void sha256(__global const uint *M, __global const uint *N, __global uint *ret) {
     uint v[8];
     uint W[64];
+    uint H[8];
     uint T1, T2;
 
-    // 1
-    for(uint t = 0; t < 16; t++) {
-        W[t] = M[t];
-    }
-    for(uint t = 16; t < 64; t++) {
-        W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
+    for(uint i = 0; i < 8; i++) {
+        H[i] = origH[i];
     }
 
-    // 2
-    for(uint t = 0; t < 8; t++) {
-        v[t] = H[t];
+    for(uint i = 0; i < N[0]; i++) {
+        // 1
+        for(uint t = 0; t < 16; t++) {
+            W[t] = M[i*16 + t];
+        }
+        for(uint t = 16; t < 64; t++) {
+            W[t] = sig1(W[t-2]) + W[t-7] + sig0(W[t-15]) + W[t-16];
+        }
+
+        // 2
+        for(uint t = 0; t < 8; t++) {
+            v[t] = H[t];
+        }
+
+        // 3
+        for(uint t = 0; t < 64; t++) {
+            T1 = v[7] + ep1(v[4]) + Ch(v[4], v[5], v[6]) + K[t] + W[t];
+            T2 = ep0(v[0]) + Maj(v[0], v[1], v[2]);
+
+            v[7] = v[6];
+            v[6] = v[5];
+            v[5] = v[4];
+            v[4] = v[3] + T1;
+            v[3] = v[2];
+            v[2] = v[1];
+            v[1] = v[0];
+            v[0] = T1 + T2;
+        }
+
+        for(uint t = 0; t < 8; t++) {
+            H[t] += v[t];
+        }
     }
 
-    // 3
-    for(uint t = 0; t < 64; t++) {
-        T1 = v[7] + ep1(v[4]) + Ch(v[4], v[5], v[6]) + K[t] + W[t];
-        T2 = ep0(v[0]) + Maj(v[0], v[1], v[2]);
-
-        v[7] = v[6];
-        v[6] = v[5];
-        v[5] = v[4];
-        v[4] = v[3] + T1;
-        v[3] = v[2];
-        v[2] = v[1];
-        v[1] = v[0];
-        v[0] = T1 + T2;
-    }
-
-    for(uint t = 0; t < 8; t++) {
-        ret[t] = H[t] + v[t];
+    for(uint i = 0; i < 8; i++) {
+        ret[i] = H[i];
     }
 }
